@@ -1,0 +1,24 @@
+# KongMerlin
+
+KongMerlin is a collection of 1,111 meme wizard ape NFTs on BNB Chain (chain 56).
+Minting is a random draw: no picking numbers. Minting requires a Binance Agent ID.
+Brewing and the Potion Shop need no Agent ID.
+
+## Contract
+
+- KongMerlin (KONG): 0xad14617AbcB15058E226A107D19eaDcA08bBA51B
+- Binance Agent ID registry: 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F
+- Supply: 1,111. Free Mint: first 500 at 0 BNB, then 0.0001 BNB. Paid Mint: 0.002 BNB.
+- Brew: 0.0001 BNB. Potion Shop: 0.0005 BNB per potion (IDs 0-55).
+
+## Pages
+
+- Home: https://kongmerlin.fun/
+- Collection: https://kongmerlin.fun/#collection
+- Potion Lab: https://kongmerlin.fun/#lab
+- Potion Shop: https://kongmerlin.fun/#shop
+- Mint: https://kongmerlin.fun/#mint
+- Agent Prompts: https://kongmerlin.fun/#prompts
+- FAQ: https://kongmerlin.fun/#faq
+- Deploy page: https://kongmerlin.fun/kongmerlin-deploy.html
+- X: https://x.com/kongmerlinfun

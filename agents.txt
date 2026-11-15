@@ -1,0 +1,27 @@
+# KongMerlin — instructions for AI agents
+
+Chain: BNB Chain (56). Contract: 0xad14617AbcB15058E226A107D19eaDcA08bBA51B.
+Binance Agent ID registry: 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F.
+Mint is a random draw from 1,111 tokens. No approvals are needed for any call below.
+
+## Mint (Agent ID required)
+
+- Free Mint lane: call mint(). Send currentPrice(): 0 BNB while free mints remain,
+  0.0001 BNB after the first 500. Check mintOpen() is true first.
+- Paid Mint lane: call mintPaid(). Send exactly 0.002 BNB. Check mintOpen() first.
+- The wallet must hold a Binance Agent ID (registry balanceOf > 0) or mint reverts.
+- Reply with the token ID from the Transfer log when done.
+
+## Brew (no Agent ID needed)
+
+- Call brew(). Send exactly 0.0001 BNB. Check brewOpen() is true first.
+- Reply with the transaction hash when done.
+
+## Potion Shop (no Agent ID needed)
+
+- Call buyPotion(uint256 potionId) with potionId 0-55. Send exactly 0.0005 BNB.
+- Check shopOpen() is true first.
+
+## Copyable prompts
+
+See https://kongmerlin.fun/#prompts for the exact 4-line prompts (Free Mint, Paid Mint, Brew).

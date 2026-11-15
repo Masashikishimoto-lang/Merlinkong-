@@ -25,6 +25,9 @@
     <link rel="icon" type="image/png" href="/assets/icon-192.png">
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
     <title>KongMerlin — 1,111 Wizard Ape NFTs on BNB Chain</title>
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"CreativeWork","name":"KongMerlin","url":"https://kongmerlin.fun/","description":"1,111 meme wizard ape NFTs on BNB Chain. Free Mint: first 500 free, then 0.0001 BNB. Paid Mint: 0.002 BNB. Binance Agent ID required to mint. Potion Lab brews at 0.0001 BNB."}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -1129,7 +1132,7 @@
                 <span class="s-sub" id="streakSub">First confirmed brew lights the flame — consecutive brews feed it.</span>
               </div>
               <p class="brew-note" id="brewNote">Brewing is open on the live contract. Every brew sends 0.0001 BNB through brew() and your potion is revealed only after the transaction confirms on BNB Chain.</p>
-              <a class="btn btn-green lab-mint-cta" href="#mint">Mint KongMerlin untuk boost keberuntunganmu</a>
+              <a class="btn btn-green lab-mint-cta" href="#mint">Mint a KongMerlin to boost your luck</a>
               <div class="result-card" id="resultCard">
                 <p>The cauldron sits cold and judgmental. Pick 3 ingredients, then brew for real — 0.0001 BNB a brew, revealed after your transaction confirms.</p>
               </div>
@@ -1271,7 +1274,7 @@
           <div class="sec-head">
             <div class="kick">MINT VIA AI AGENT</div>
             <h2>Copy. Paste. Minted.</h2>
-            <p>Give one of these prompts to your AI agent and it mints for you. Free Mint lane: mint() — free for the first 500, then 0.0001 BNB. Paid Mint lane: mintPaid() at 0.002 BNB, open from the start. Either way, the draw hands you your wizard.</p>
+            <p>Give one of these prompts to your AI agent and it mints for you. Free Mint lane: mint() — free for the first 500, then 0.0001 BNB. Paid Mint lane: mintPaid() at 0.002 BNB, open from the start. Either way, the draw hands you your wizard. Brew prompt: brew() at 0.0001 BNB, no Agent ID needed.</p>
           </div>
           <div class="prompt-grid">
             <div class="prompt-card">
@@ -1293,6 +1296,16 @@ Reply with the token ID I receive when done.</pre>
 Contract: 0xad14617AbcB15058E226A107D19eaDcA08bBA51B
 Send exactly 0.002 BNB with the mint transaction.
 Reply with the token ID I receive when done.</pre>
+            </div>
+            <div class="prompt-card">
+              <div class="p-head">
+                <div class="t">Brew Prompt <small>brew() · 0.0001 BNB · no Agent ID needed</small></div>
+                <button class="copy-btn" type="button" data-copy="promptBrew">Copy</button>
+              </div>
+              <pre id="promptBrew">Brew 1 potion for me on BNB Chain via brew() — no Agent ID needed.
+Contract: 0xad14617AbcB15058E226A107D19eaDcA08bBA51B
+Send exactly 0.0001 BNB with the brew transaction.
+Reply with the transaction hash when done.</pre>
             </div>
           </div>
         </div>
@@ -1475,7 +1488,8 @@ Reply with the token ID I receive when done.</pre>
       /* --- copy prompt buttons --- */
       document.querySelectorAll("[data-copy]").forEach(btn => {
         btn.addEventListener("click", async () => {
-          const text = $(btn.dataset.copy).innerText.trim();
+          const srcEl = $(btn.dataset.copy);
+          const text = ((srcEl.innerText || srcEl.textContent) || "").trim();
           let ok = false;
           try { await navigator.clipboard.writeText(text); ok = true; }
           catch (e) {
@@ -1634,6 +1648,8 @@ Reply with the token ID I receive when done.</pre>
       const FREEMINTED_SELECTOR = "0xd10a1a2b"; // freeMinted()
       const CURRENTPRICE_SELECTOR = "0x9d1b464a"; // currentPrice()
       const PAIDPRICE_SELECTOR = "0x95a376f4"; // PAID_MINT_PRICE()
+      const BREWOPEN_SELECTOR = "0xe48eacfa"; // brewOpen()
+      const SHOPOPEN_SELECTOR = "0x35e370f2"; // shopOpen()
       const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
       let mintOpenLive = false;
       let mintStateKnown = false; // true once a live read succeeds — never report CLOSED before that
@@ -1703,6 +1719,10 @@ Reply with the token ID I receive when done.</pre>
             $("connectBtn").textContent = labAccount.slice(0, 6) + "…" + labAccount.slice(-4);
           }
           if (!(await ensureBnbChain())) { toast("Switch your wallet to BNB Chain (56) to brew."); return false; }
+          try {
+            const brewState = await rpcEthCall(CONTRACT_ADDRESS, BREWOPEN_SELECTOR);
+            if (hexToBigInt(brewState) !== 1n) { toast("Brewing is closed on-chain right now."); return false; }
+          } catch (e) { /* RPC unreadable — let the chain decide */ }
           await refreshLuckyCharm();
           toast("Confirm the 0.0001 BNB brew fee in your wallet…");
           const hash = await window.ethereum.request({
@@ -1875,7 +1895,7 @@ Reply with the token ID I receive when done.</pre>
         setTimeout(() => cz.classList.remove("splash"), 600);
       }
       function flyIngredient(idx, fromEl) {
-        if (REDUCED || !fromEl) { splash(); return; }
+        if (REDUCED || !fromEl || typeof Element.prototype.animate !== "function") { splash(); return; }
         const target = $("liquid");
         if (!target) { splash(); return; }
         const a = fromEl.getBoundingClientRect(), b = target.getBoundingClientRect();
@@ -1898,7 +1918,7 @@ Reply with the token ID I receive when done.</pre>
 
       /* --- Reveal burst: particles erupt from the cauldron mouth --- */
       function burst(color, n) {
-        if (REDUCED) return;
+        if (REDUCED || typeof Element.prototype.animate !== "function") return;
         const stage = document.querySelector(".lab-stage");
         const cz = $("cauldron");
         if (!stage || !cz) return;
@@ -2211,6 +2231,10 @@ Reply with the token ID I receive when done.</pre>
             $("connectBtn").textContent = labAccount.slice(0, 6) + "…" + labAccount.slice(-4);
           }
           if (!(await ensureBnbChain())) { toast("Switch your wallet to BNB Chain (56) to buy."); return false; }
+          try {
+            const shopState = await rpcEthCall(CONTRACT_ADDRESS, SHOPOPEN_SELECTOR);
+            if (hexToBigInt(shopState) !== 1n) { toast("The Potion Shop is closed on-chain right now."); return false; }
+          } catch (e) { /* RPC unreadable — let the chain decide */ }
           toast("Confirm the 0.0005 BNB shop payment in your wallet…");
           const hash = await window.ethereum.request({
             method: "eth_sendTransaction",
