@@ -922,6 +922,28 @@
       .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
       @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
     </style>
+  
+    <!-- KM-BOARD-START -->
+    <style>
+      .km-board-list{display:flex;flex-direction:column;gap:10px;max-width:640px;margin:0 auto}
+      .km-board-row{display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid rgba(245,197,66,.35);border-radius:16px;background:rgba(0,0,0,.35);text-align:left}
+      .km-board-rank{flex:0 0 38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Sora",sans-serif;font-weight:800;font-size:16px;background:rgba(255,255,255,.08);color:#f5ecd7}
+      .km-board-row.r1 .km-board-rank{background:linear-gradient(180deg,#ffe9a8,#f5c542);color:#241303}
+      .km-board-row.r2 .km-board-rank{background:linear-gradient(180deg,#ffffff,#c0c8d4);color:#241303}
+      .km-board-row.r3 .km-board-rank{background:linear-gradient(180deg,#f0b27a,#b0703a);color:#241303}
+      .km-board-who{flex:1;min-width:0}
+      .km-board-addr{font-weight:700;color:#f5ecd7;text-decoration:none;font-size:17px}
+      .km-board-addr:hover{text-decoration:underline}
+      .km-board-bar{display:block;height:6px;border-radius:3px;background:rgba(255,255,255,.1);margin-top:6px;overflow:hidden}
+      .km-board-bar i{display:block;height:100%;background:linear-gradient(90deg,#f2c14e,#f5c542);border-radius:3px}
+      .km-board-count{font-family:"Sora",sans-serif;font-weight:800;font-size:20px;color:#f5c542;white-space:nowrap}
+      .km-board-count small{display:block;font-family:"Outfit",sans-serif;font-weight:600;font-size:11px;letter-spacing:.14em;color:rgba(245,236,215,.6);text-align:right}
+      .km-board-note{max-width:640px;margin:18px auto 0;text-align:center;font-size:15px;line-height:1.6;color:rgba(245,236,215,.75)}
+      .km-board-note b{color:#f5c542}
+      .km-board-status{max-width:640px;margin:0 auto;text-align:center;padding:26px 18px;border:1px dashed rgba(245,197,66,.4);border-radius:16px;color:#f5ecd7;font-size:17px;line-height:1.6}
+      .km-board-status .btn{display:inline-block;margin-top:12px}
+    </style>
+    <!-- KM-BOARD-END -->
   </head>
   <body>
     <header class="site">
@@ -936,6 +958,7 @@
         <nav class="main" aria-label="Main">
           <a href="#collection">Collection</a>
           <a href="#lab">Potion Lab</a>
+          <a href="#board">Leaderboard</a>
           <a href="#shop">Potion Shop</a>
           <a href="#mint">Mint</a>
           <a href="#prompts" class="keep">Agent Prompts</a>
@@ -1186,6 +1209,23 @@
           </div>
         </div>
       </section>
+
+
+      <!-- KM-BOARD-START -->
+      <!-- Brew Leaderboard -->
+      <section class="block board" id="board">
+        <div class="wrap">
+          <div class="sec-head">
+            <div class="kick">POTION LAB &middot; LEADERBOARD</div>
+            <h2>Top Brewers</h2>
+            <p>Every brew puts your wallet on the board. Season 1 starts now &mdash; the top 3 brewers every Sunday get a shoutout from <a href="https://x.com/kongmerlinfun" target="_blank" rel="noopener">@kongmerlinfun</a>. No Agent ID needed to brew.</p>
+          </div>
+          <div id="kmBoardStatus" class="km-board-status" role="status">Reading the cauldron&rsquo;s ledger&hellip;</div>
+          <div id="kmBoardList" class="km-board-list" hidden></div>
+          <p class="km-board-note">Ranked from <b>PotionBrewed</b> events on BNB Chain &mdash; no sign-up, your wallet is your name. Board updates itself as new brews land. First shoutout: <b>Sunday, Nov 22, 2026</b>.</p>
+        </div>
+      </section>
+      <!-- KM-BOARD-END -->
 
       <!-- Potion Shop -->
       <section class="block shop" id="shop">
@@ -2564,5 +2604,129 @@ Reply with the transaction hash when done.</pre>
         }
       });
     </script>
+    <!-- KM-BOARD-START -->
+    <script>
+    (function () {
+      "use strict";
+      var CONTRACT = "0xad14617AbcB15058E226A107D19eaDcA08bBA51B";
+      var TOPIC0 = "0x2c8e28d5abe2a05526e670cc599913c3cdea2d91f36de40294d06191f74fc5dd";
+      var DEPLOY_BLOCK = 133708485;
+      var CHUNK = 50000;
+      var RPCS = [
+        "https://bsc-rpc.publicnode.com",
+        "https://bsc-dataseed1.bnbchain.org",
+        "https://bsc-dataseed2.bnbchain.org",
+        "https://bsc-dataseed3.bnbchain.org",
+        "https://1rpc.io/bnb"
+      ];
+      var statusEl = document.getElementById("kmBoardStatus");
+      var listEl = document.getElementById("kmBoardList");
+      if (!statusEl || !listEl) return;
+
+      function shortAddr(a) { return a.slice(0, 6) + "\u2026" + a.slice(-4); }
+      function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+      function rpcCall(url, method, params, timeoutMs) {
+        return new Promise(function (resolve, reject) {
+          var ctrl = new AbortController();
+          var t = setTimeout(function () { ctrl.abort(); }, timeoutMs || 15000);
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: method, params: params }),
+            signal: ctrl.signal
+          }).then(function (r) { return r.json(); })
+            .then(function (j) {
+              clearTimeout(t);
+              if (j && j.error) reject(new Error(j.error.message || "rpc error"));
+              else resolve(j.result);
+            })
+            .catch(function (e) { clearTimeout(t); reject(e); });
+        });
+      }
+
+      function fetchLogsFrom(url) {
+        return rpcCall(url, "eth_blockNumber", []).then(function (hex) {
+          var latest = parseInt(hex, 16);
+          var logs = [];
+          var chain = Promise.resolve();
+          for (var from = DEPLOY_BLOCK; from <= latest; from += CHUNK) {
+            (function (f) {
+              var to = Math.min(f + CHUNK - 1, latest);
+              chain = chain.then(function () {
+                return rpcCall(url, "eth_getLogs", [{
+                  fromBlock: "0x" + f.toString(16),
+                  toBlock: "0x" + to.toString(16),
+                  address: CONTRACT,
+                  topics: [TOPIC0]
+                }]).then(function (part) { logs = logs.concat(part || []); });
+              });
+            })(from);
+          }
+          return chain.then(function () { return logs; });
+        });
+      }
+
+      function aggregate(logs) {
+        var counts = {};
+        var order = [];
+        (logs || []).forEach(function (log) {
+          var t = (log.topics && log.topics[1]) || "";
+          if (t.length < 40) return;
+          var addr = ("0x" + t.slice(-40)).toLowerCase();
+          if (!counts[addr]) { counts[addr] = 0; order.push(addr); }
+          counts[addr] += 1;
+        });
+        return order.map(function (a) { return { addr: a, brews: counts[a] }; })
+          .sort(function (x, y) { return y.brews - x.brews; });
+      }
+
+      function render(rows, total) {
+        if (!rows.length) {
+          statusEl.innerHTML = 'No brews yet. Be the first name on this board &mdash; 0.0001 BNB per brew, no Agent ID needed.<br><a class="btn btn-green" href="#lab">Go to the Potion Lab</a>';
+          statusEl.hidden = false;
+          listEl.hidden = true;
+          return;
+        }
+        statusEl.hidden = true;
+        var top = rows[0].brews;
+        var html = rows.slice(0, 10).map(function (r, i) {
+          var cls = i < 3 ? " r" + (i + 1) : "";
+          var pct = Math.max(8, Math.round((r.brews / top) * 100));
+          return '<div class="km-board-row' + cls + '">' +
+            '<span class="km-board-rank">' + (i + 1) + '</span>' +
+            '<span class="km-board-who">' +
+              '<a class="km-board-addr" href="https://bscscan.com/address/' + r.addr + '" target="_blank" rel="noopener">' + esc(shortAddr(r.addr)) + '</a>' +
+              '<span class="km-board-bar"><i style="width:' + pct + '%"></i></span>' +
+            '</span>' +
+            '<span class="km-board-count">' + r.brews + '<small>BREW' + (r.brews === 1 ? '' : 'S') + '</small></span>' +
+          '</div>';
+        }).join("");
+        listEl.innerHTML = html;
+        listEl.hidden = false;
+      }
+
+      function showError() {
+        statusEl.innerHTML = "The leaderboard is taking a break &mdash; the chain is busy. Refresh the page to try again.";
+        statusEl.hidden = false;
+        listEl.hidden = true;
+      }
+
+      function load() {
+        var i = 0;
+        (function next() {
+          if (i >= RPCS.length) { showError(); return; }
+          fetchLogsFrom(RPCS[i++]).then(function (logs) {
+            render(aggregate(logs), logs.length);
+          }).catch(next);
+        })();
+      }
+
+      // Test hook: render synthetic logs without touching the chain.
+      window.KM_BOARD = { renderFromLogs: function (logs) { render(aggregate(logs), logs.length); } };
+      load();
+    })();
+    </script>
+    <!-- KM-BOARD-END -->
   </body>
 </html>
