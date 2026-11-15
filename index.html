@@ -948,7 +948,7 @@
       <div class="hero">
         <div class="wrap hero-in">
           <div>
-            <span class="status-pill"><span class="dot"></span><span id="mintStatusPill">CONTRACT LIVE · MINT CLOSED</span></span>
+            <span class="status-pill"><span class="dot"></span><span id="mintStatusPill">CHECKING MINT STATUS…</span></span>
             <h1>The <span class="b">Ape King</span> Who Casts <span class="g">Spells</span></h1>
             <p class="lede">KongMerlin is a collection of 1,111 meme wizard apes on BNB Chain. Laser eyes, diamond hands, deal-with-it shades — every portrait is a whole mood, and every mood is one of a kind. Minting is a pure random draw: you never pick a number, you just meet your wizard.</p>
             <div class="hero-cta">
@@ -1230,8 +1230,8 @@
                 <li>Your wizard is revealed once the mint confirms</li>
                 <li>Connect wallet or mint via AI agent</li>
               </ul>
-              <div class="agent-id-status" id="agentIdStatus"><b>Agent ID check:</b> connect a wallet and this page reads its balance in the Binance Agent ID registry (0x60B9…022F) on BNB Chain. Wallets without an Agent ID are blocked from minting on both lanes; wallets with one mint as normal once mint opens.</div>
-              <button class="btn" id="mintBtn" type="button" disabled>Mint Closed</button>
+              <div class="agent-id-status" id="agentIdStatus"><b>Agent ID check:</b> connect a wallet and this page reads its balance in the Binance Agent ID registry (0x60B9…022F) on BNB Chain. Wallets without an Agent ID are blocked from minting on both lanes; wallets with one can mint on both lanes.</div>
+              <button class="btn" id="mintBtn" type="button" disabled>Checking…</button>
             </div>
             <div class="mint-card mint2">
               <div class="tier">PAID MINT LANE</div>
@@ -1248,7 +1248,7 @@
                 <li>Binance Agent ID required — checked on-chain before mint</li>
                 <li>Your wizard is revealed once the mint confirms</li>
               </ul>
-              <button class="btn" id="mintPaidBtn" type="button" disabled>Mint Closed</button>
+              <button class="btn" id="mintPaidBtn" type="button" disabled>Checking…</button>
             </div>
           </div>
           <div class="contract-bar">
@@ -1260,7 +1260,7 @@
             <span><span class="k">FREE LEFT</span> <span class="v" id="liveFree">… / 500</span></span>
             <span><span class="k">FREE LANE PRICE</span> <span class="v" id="livePrice">…</span></span>
             <span><span class="k">MINT STATUS</span> <span class="v" id="liveMintStatus">Checking…</span></span>
-            <span style="color:var(--ink-soft)">Mint is closed until the owner opens it from the deploy page. Brew and the Potion Shop are already open.</span>
+            <span style="color:var(--ink-soft)">Mint status is read live from the contract. Brew and the Potion Shop are open.</span>
           </div>
         </div>
       </section>
@@ -1328,7 +1328,7 @@ Reply with the token ID I receive when done.</pre>
             </details>
             <details>
               <summary>When does mint open?</summary>
-              <p>The contract is deployed on BNB Chain at 0xad14617AbcB15058E226A107D19eaDcA08bBA51B, but mint is still closed — the owner opens it from the deploy page, and this page reads the live mint status from the contract. Brewing and the Potion Shop are already open.</p>
+              <p>Mint is open. The contract is deployed on BNB Chain at 0xad14617AbcB15058E226A107D19eaDcA08bBA51B, and this page reads the live mint status from the contract — the MINT STATUS line above and the mint buttons always follow the on-chain state. Brewing and the Potion Shop are open too.</p>
             </details>
           </div>
         </div>
@@ -1339,7 +1339,7 @@ Reply with the token ID I receive when done.</pre>
       <div class="wrap">
         <span><b>KongMerlin</b> — 1,111 wizard apes on BNB Chain.</span>
         <span><a href="https://x.com/kongmerlinfun" target="_blank" rel="noopener">@kongmerlinfun on X</a></span>
-        <span>Contract: <a href="https://bscscan.com/address/0xad14617AbcB15058E226A107D19eaDcA08bBA51B" target="_blank" rel="noopener">0xad14…BA51B</a> · Mint closed · Brew &amp; Shop open</span>
+        <span>Contract: <a href="https://bscscan.com/address/0xad14617AbcB15058E226A107D19eaDcA08bBA51B" target="_blank" rel="noopener">0xad14…BA51B</a> · <span id="footerMintStatus">Mint status: checking…</span> · Brew &amp; Shop open</span>
       </div>
     </footer>
 
@@ -1609,16 +1609,16 @@ Reply with the token ID I receive when done.</pre>
          KongMerlin gets the Lucky Charm (legendary blessing 2% → 4%). */
       const CONTRACT_ADDRESS = "0xad14617AbcB15058E226A107D19eaDcA08bBA51B";
       const BSCSCAN_CONTRACT_URL = "https://bscscan.com/address/0xad14617AbcB15058E226A107D19eaDcA08bBA51B";
-      const BSC_RPC_URL = "https://bsc-dataseed.binance.org";
+      const BSC_RPC_URLS = ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://bsc-dataseed2.binance.org"];
       /* Mint lanes: two lanes, one 1,111 supply, both random draws, both
          gated by the Binance Agent ID check. Free Mint lane — mint():
          currentPrice() returns its live price (0 while freeRemaining() > 0,
          then 0.0001 BNB) and mint() is called sending exactly that live
          price. Paid Mint lane — mintPaid(): PAID_MINT_PRICE = 0.002 BNB,
          open from the moment mint opens, for as long as supply remains.
-         Mint itself starts CLOSED on-chain (mintOpen() = false): the mint
-         buttons read mintOpen() live and stay in the closed state until
-         the owner opens mint — no fake minting. The minted token ID is
+         Mint is OPEN on-chain (mintOpen() = true since 15 Nov 2026): the mint
+         buttons read mintOpen() live and follow the on-chain state —
+         no fake minting. The minted token ID is
          read only from the receipt's Transfer log (random draw). */
       const FREE_MINT_TOTAL = 500; // free allocation on the mint() lane
       const MAX_SUPPLY = 1111;
@@ -1636,6 +1636,7 @@ Reply with the token ID I receive when done.</pre>
       const PAIDPRICE_SELECTOR = "0x95a376f4"; // PAID_MINT_PRICE()
       const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
       let mintOpenLive = false;
+      let mintStateKnown = false; // true once a live read succeeds — never report CLOSED before that
       let mintingBusy = false;
       let labAccount = null;
       let holderBoost = false;
@@ -2279,10 +2280,10 @@ Reply with the token ID I receive when done.</pre>
          with no Agent ID gets a clear blocked message and cannot mint; a
          wallet with one mints as normal. Brewing and the Potion Shop are
          NOT gated — they never consult this check. The contract is live
-         but mint starts CLOSED on-chain, so the mint buttons read
-         mintOpen() live and show the closed state until the owner opens
-         mint; the Agent ID check runs live against the registry so a
-         connected wallet can see its mint status in the meantime. */
+         Mint is open on-chain; the mint buttons read
+         mintOpen() live and follow the on-chain state;
+         the Agent ID check runs live against the registry so a
+         connected wallet can see its mint status. */
       const AGENT_ID_REGISTRY = "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F";
       let agentIdOk = null; // null = not checked yet, true = holds an Agent ID, false = blocked
       async function refreshAgentId() {
@@ -2291,7 +2292,7 @@ Reply with the token ID I receive when done.</pre>
         el.classList.remove("ok", "blocked");
         if (!labAccount) {
           agentIdOk = null;
-          el.innerHTML = "<b>Agent ID check:</b> connect a wallet and this page reads its balance in the Binance Agent ID registry (0x60B9…022F) on BNB Chain. Wallets without an Agent ID are blocked from minting; wallets with one mint as normal once mint opens.";
+          el.innerHTML = "<b>Agent ID check:</b> connect a wallet and this page reads its balance in the Binance Agent ID registry (0x60B9…022F) on BNB Chain. Wallets without an Agent ID are blocked from minting; wallets with one can mint while mint is open.";
           return;
         }
         if (!(window.ethereum && window.ethereum.request)) {
@@ -2308,7 +2309,7 @@ Reply with the token ID I receive when done.</pre>
           if (bal >= 1) {
             agentIdOk = true;
             el.classList.add("ok");
-            el.innerHTML = "<b>Agent ID found.</b> This wallet holds a Binance Agent ID, so it can mint as soon as mint opens.";
+            el.innerHTML = "<b>Agent ID found.</b> This wallet holds a Binance Agent ID, so it can mint" + (mintOpenLive ? " now." : (mintStateKnown ? " once mint reopens." : " — mint status is being read live above."));
           } else {
             agentIdOk = false;
             el.classList.add("blocked");
@@ -2325,21 +2326,22 @@ Reply with the token ID I receive when done.</pre>
          RPC first (works with no wallet connected), wallet provider as
          fallback. Only the getters listed above are called — no others. */
       async function rpcEthCall(to, data) {
-        try {
-          const res = await fetch(BSC_RPC_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: to, data: data }, "latest"] })
-          });
-          const j = await res.json();
-          if (j && j.result) return j.result;
-          throw new Error("rpc error");
-        } catch (e) {
-          if (window.ethereum && window.ethereum.request) {
-            return await window.ethereum.request({ method: "eth_call", params: [{ to: to, data: data }, "latest"] });
-          }
-          throw e;
+        const payload = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: to, data: data }, "latest"] });
+        for (let i = 0; i < BSC_RPC_URLS.length; i++) {
+          try {
+            const res = await fetch(BSC_RPC_URLS[i], {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: payload
+            });
+            const j = await res.json();
+            if (j && j.result) return j.result;
+          } catch (e) { /* try the next endpoint */ }
         }
+        if (window.ethereum && window.ethereum.request) {
+          return await window.ethereum.request({ method: "eth_call", params: [{ to: to, data: data }, "latest"] });
+        }
+        throw new Error("all BSC RPC endpoints failed");
       }
       function hexToBigInt(h) { try { return BigInt(h); } catch (e) { return 0n; } }
       function weiToBnbStr(wei) {
@@ -2353,6 +2355,15 @@ Reply with the token ID I receive when done.</pre>
       function renderMintButtons() {
         const freeBtn = $("mintBtn"), paidBtn = $("mintPaidBtn");
         if (!freeBtn || !paidBtn || mintingBusy) return;
+        if (!mintStateKnown) {
+          freeBtn.disabled = true;
+          paidBtn.disabled = true;
+          freeBtn.textContent = "Checking…";
+          paidBtn.textContent = "Checking…";
+          freeBtn.classList.remove("btn-green");
+          paidBtn.classList.remove("btn-blue");
+          return;
+        }
         if (!mintOpenLive) {
           freeBtn.disabled = true;
           paidBtn.disabled = true;
@@ -2382,6 +2393,7 @@ Reply with the token ID I receive when done.</pre>
             rpcEthCall(CONTRACT_ADDRESS, PAIDPRICE_SELECTOR)
           ]);
           mintOpenLive = hexToBigInt(results[0]) === 1n;
+          mintStateKnown = true;
           const minted = Number(hexToBigInt(results[1]));
           const freeRem = Number(hexToBigInt(results[2]));
           liveCurrentPriceWei = hexToBigInt(results[3]);
@@ -2391,11 +2403,15 @@ Reply with the token ID I receive when done.</pre>
           if (priceEl) priceEl.textContent = weiToBnbStr(liveCurrentPriceWei) + " BNB";
           if (statusEl) statusEl.textContent = mintOpenLive ? "OPEN" : "CLOSED";
           if (pill) pill.textContent = mintOpenLive ? "MINT LIVE" : "CONTRACT LIVE · MINT CLOSED";
+          const foot = $("footerMintStatus");
+          if (foot) foot.textContent = mintOpenLive ? "Mint open" : "Mint closed";
           renderMintButtons();
           return true;
         } catch (e) {
-          if (statusEl) statusEl.textContent = "CLOSED";
+          if (statusEl) statusEl.textContent = "UNKNOWN — RETRYING";
+          if (pill) pill.textContent = "CHECKING MINT STATUS…";
           renderMintButtons();
+          setTimeout(refreshContractState, 5000);
           return false;
         }
       }
@@ -2499,6 +2515,7 @@ Reply with the token ID I receive when done.</pre>
       $("mintBtn").addEventListener("click", async () => { await doMint("free"); });
       $("mintPaidBtn").addEventListener("click", async () => { await doMint("paid"); });
       refreshContractState();
+      setInterval(refreshContractState, 30000); // keep minted / free-left live while the page stays open
 
       /* --- connect wallet: sets the account for Agent ID, Lucky Charm,
          mint, brew and shop checks, and refreshes the live mint state --- */
@@ -2513,7 +2530,7 @@ Reply with the token ID I receive when done.</pre>
               refreshLuckyCharm();
               refreshAgentId();
               refreshContractState();
-              toast("Wallet connected. Brew and the Potion Shop are open; mint is still closed.");
+              toast(mintOpenLive ? "Wallet connected. Mint, Brew and the Potion Shop are all open." : (mintStateKnown ? "Wallet connected. Brew and the Potion Shop are open; mint is closed right now." : "Wallet connected. Brew and the Potion Shop are open; mint status is being read live."));
             }
           } catch (e) {
             toast("Wallet connection was cancelled.");
